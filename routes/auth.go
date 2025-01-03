@@ -10,6 +10,6 @@ func AuthRoutes(app *iris.Application) {
 	auth := app.Party("/auth")
 	{
 		auth.Post("/signup", controllers.SignUp)
-		// auth.Post("/login", login)
+		auth.Post("/signin", controllers.Login)
 	}
 }

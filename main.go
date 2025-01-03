@@ -21,6 +21,7 @@ func main() {
 		ctx.JSON(iris.Map{"message": "Hello World!"})
 	})
 	routes.AuthRoutes(app)
+	routes.UserRoutes(app)
 	Port := os.Getenv("PORT")
 	if Port == "" {
 		Port = "8080"
