@@ -12,6 +12,7 @@ func UserRoutes(app *iris.Application) {
 	{
 		user.Use(middlewares.AuthMiddleware())
 		user.Get("/logout", controllers.Logout)
+		user.Get("/", controllers.GetUsers)
 		// user.Get("/profile", controllers.GetProfile)
 		// user.Put("/profile", controllers.UpdateProfile)
 		// user.Get("/profile/{userId}", controllers.GetProfile)

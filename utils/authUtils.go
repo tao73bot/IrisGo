@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	"github.com/kataras/iris/v12"
 )
@@ -8,10 +10,8 @@ import (
 func CheckUserRoles(ctx iris.Context, role string) (err error) {
 	userRole := ctx.Values().GetString("role")
 	if userRole != role {
-		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
-			Title("Forbidden").
-			Detail("You are not authorized to access this route"))
-		return
+		err = errors.New("you are not authorized to access this route")
+		return err
 	}
 	return nil
 }
@@ -23,10 +23,8 @@ func MatchRoleToUid(ctx iris.Context, userId uuid.UUID) (err error) {
 		return err
 	}
 	if userRole == "user" && userId != uid {
-		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
-			Title("Forbidden").
-			Detail("You are not authorized to access this route"))
-		return
+		err = errors.New("you are not authorized to access this route")
+		return err
 	}
 	err = CheckUserRoles(ctx, userRole)
 	return err

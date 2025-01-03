@@ -13,6 +13,7 @@ func AuthMiddleware() iris.Handler {
 			ctx.StopWithProblem(iris.StatusUnauthorized, iris.NewProblem().
 				Title("Unauthorized").
 				Detail("No token provided"))
+			ctx.StopExecution()
 			return
 		}
 		claims, err := utils.ValidateToken(clientToken)
@@ -20,6 +21,7 @@ func AuthMiddleware() iris.Handler {
 			ctx.StopWithProblem(iris.StatusUnauthorized, iris.NewProblem().
 				Title("Unauthorized").
 				Detail(err.Error()))
+			ctx.StopExecution()
 			return
 		}
 		for _, v := range utils.BlockList {
@@ -27,6 +29,7 @@ func AuthMiddleware() iris.Handler {
 				ctx.StopWithProblem(iris.StatusUnauthorized, iris.NewProblem().
 					Title("Unauthorized").
 					Detail("Token is invalid"))
+				ctx.StopExecution()
 				return
 			}
 		}

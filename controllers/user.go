@@ -109,3 +109,24 @@ func Logout(ctx iris.Context) {
 		"message": "Logout successful",
 	})
 }
+
+func GetUsers(ctx iris.Context) {
+	if err := utils.CheckUserRoles(ctx, "admin"); err != nil {
+		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
+			Title("Forbidden").
+			Detail(err.Error()))
+		return
+	}
+	var users []models.User
+	result := db.DB.Find(&users)
+	if result.Error != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(result.Error.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "Users retrieved successfully",
+		"users": users,
+	})
+}
