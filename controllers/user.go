@@ -5,10 +5,10 @@ import (
 	"myIris/db"
 	"myIris/models"
 	"myIris/utils"
-	"net/http"
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/middleware/jwt"
 	"golang.org/x/crypto/bcrypt"
@@ -107,13 +107,14 @@ func Login(ctx iris.Context) {
 	// 		Detail(err.Error()))
 	// 	return
 	// }
-	ctx.SetCookie(&http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		HttpOnly: true,
-		Path:     "/",
-		Expires:  time.Now().Add(1 * time.Hour),
-	})
+	// ctx.SetCookie(&http.Cookie{
+	// 	Name:     "refresh_token",
+	// 	Value:    refreshToken,
+	// 	HttpOnly: true,
+	// 	Path:     "/",
+	// 	Expires:  time.Now().Add(1 * time.Hour),
+	// })
+	ctx.SetCookieKV("refresh_token", refreshToken, iris.CookiePath("/"), iris.CookieExpires(1*time.Hour), iris.CookieHTTPOnly(true))
 	ctx.JSON(iris.Map{
 		"message": "Login successful",
 		"token":   token,
@@ -176,5 +177,213 @@ func GetUsers(ctx iris.Context) {
 	ctx.JSON(iris.Map{
 		"message": "Users retrieved successfully",
 		"users":   users,
+	})
+}
+
+func GetUser(ctx iris.Context) {
+	uid := uuid.MustParse(ctx.Params().Get("userId"))
+	if err := utils.MatchRoleToUid(ctx, uid); err != nil {
+		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
+			Title("Forbidden").
+			Detail(err.Error()))
+		return
+	}
+	var user models.User
+	result := db.DB.Where("user_id = ?", uid).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("User not found"))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "User retrieved successfully",
+		"user":    user,
+	})
+}
+
+func GetAnotherUser(ctx iris.Context) {
+	uid := uuid.MustParse(ctx.Params().Get("userId"))
+	var user models.User
+	result := db.DB.Where("user_id = ?", uid).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("User not found"))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "User retrieved successfully",
+		"name":   user.Name,
+		"email":    user.Email,
+		"role":    user.Role,
+	})
+}
+
+func UpdateUser(ctx iris.Context) {
+	uid := uuid.MustParse(ctx.Params().Get("userId"))
+	if err := utils.MatchRoleToUid(ctx, uid); err != nil {
+		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
+			Title("Forbidden").
+			Detail(err.Error()))
+		return
+	}
+	var user models.User
+	result := db.DB.Where("user_id = ?", uid).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("User not found"))
+		return
+	}
+	var body struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail(err.Error()))
+		return
+	}
+	user.Name = body.Name
+	user.Email = body.Email
+	result = db.DB.Save(&user)
+	if result.Error != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(result.Error.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "User updated successfully",
+		"user":    user,
+	})
+}
+
+func UpdateUserPassword(ctx iris.Context) {
+	uid := uuid.MustParse(ctx.Params().Get("userId"))
+	if err := utils.MatchRoleToUid(ctx, uid); err != nil {
+		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
+			Title("Forbidden").
+			Detail(err.Error()))
+		return
+	}
+	var user models.User
+	result := db.DB.Where("user_id = ?", uid).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("User not found"))
+		return
+	}
+	var body struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+		ConfirmPassword string `json:"confirm_password"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail(err.Error()))
+		return
+	}
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.CurrentPassword))
+	if err != nil {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail("Invalid Password"))
+		return
+	}
+	if body.NewPassword != body.ConfirmPassword {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail("Passwords do not match"))
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(err.Error()))
+		return
+	}
+	user.Password = string(hash)
+	result = db.DB.Save(&user)
+	if result.Error != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(result.Error.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "Password updated successfully",
+	})
+}
+
+func UpdateUserRole(ctx iris.Context) {
+	if err := utils.CheckUserRoles(ctx, "admin"); err != nil {
+		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
+			Title("Forbidden").
+			Detail(err.Error()))
+		return
+	}
+	uid := uuid.MustParse(ctx.Params().Get("userId"))
+	var user models.User
+	result := db.DB.Where("user_id = ?", uid).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("User not found"))
+		return
+	}
+	var body struct {
+		Role string `json:"role"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail(err.Error()))
+		return
+	}
+	user.Role = body.Role
+	result = db.DB.Save(&user)
+	if result.Error != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(result.Error.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "Role updated successfully",
+		"user":    user,
+	})
+}
+
+func DeleteUser(ctx iris.Context) {
+	if err := utils.CheckUserRoles(ctx, "admin"); err != nil {
+		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
+			Title("Forbidden").
+			Detail(err.Error()))
+		return
+	}
+	uid := uuid.MustParse(ctx.Params().Get("userId"))
+	var user models.User
+	result := db.DB.Where("user_id = ?", uid).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("User not found"))
+		return
+	}
+	result = db.DB.Delete(&user)
+	if result.Error != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(result.Error.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "User deleted successfully",
 	})
 }

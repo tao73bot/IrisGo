@@ -18,10 +18,12 @@ func CheckUserRoles(ctx iris.Context, role string) (err error) {
 
 func MatchRoleToUid(ctx iris.Context, userId uuid.UUID) (err error) {
 	userRole := ctx.Values().GetString("role")
-	uid, err := uuid.Parse(ctx.Params().Get("userId"))
+	token := ctx.GetHeader("Authorization")
+	claims, err := ValidateTokenIris(token)
 	if err != nil {
 		return err
 	}
+	uid := uuid.MustParse(claims.UserID)
 	if userRole == "user" && userId != uid {
 		err = errors.New("you are not authorized to access this route")
 		return err
