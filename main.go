@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/kataras/iris/v12"
+	"github.com/iris-contrib/swagger/v12"
+	"github.com/iris-contrib/swagger/v12/swaggerFiles"
 )
 
 func init() {
@@ -14,6 +16,18 @@ func init() {
 	db.ConnectDB()
 	db.Migrate()
 }
+
+// @BasePath /api/v1
+
+// PingExample godoc
+// @Summary ping example
+// @Schemes
+// @Description do ping
+// @Tags example
+// @Accept json
+// @Produce json
+// @Success 200 {string} Helloworld
+// @Router /example/helloworld [get]
 
 func main() {
 	app := iris.New()
@@ -25,6 +39,9 @@ func main() {
 	routes.LeadRoutes(app)
 	routes.CustomerRoutes(app)
 	routes.InteractionsRoutes(app)
+
+	app.HandleDir("/docs", "./docs", iris.DirOptions{IndexName: "index.html"})
+	app.Get("/swagger/{any:path}", swagger.WrapHandler(swaggerFiles.Handler, swagger.URL("/docs/swagger.json")))
 	Port := os.Getenv("PORT")
 	if Port == "" {
 		Port = "8080"

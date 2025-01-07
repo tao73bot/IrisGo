@@ -1,0 +1,648 @@
+swagger: "2.0"
+info:
+  title: Iris CRM Management API
+  description: Comprehensive API for Authentication, User, Customer, Lead, and Interaction Management
+  version: 1.0.0
+  contact:
+    name: Iris API Support
+    email: support@irisapi.com
+
+# Security Definitions
+securityDefinitions:
+  BearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: JWT Bearer Token for authentication
+
+# Common Security Requirement
+security:
+  - BearerAuth: []
+
+# Path Definitions
+paths:
+  # Authentication Routes
+  /auth/signup:
+    post:
+      summary: User Signup
+      description: Register a new user
+      tags:
+        - Authentication
+      security: [] # No authentication required for signup
+      parameters:
+        - in: body
+          name: signupRequest
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+                format: password
+              name:
+                type: string
+      responses:
+        '201':
+          description: User successfully registered
+        '400':
+          description: Invalid signup details
+
+  /auth/signin:
+    post:
+      summary: User Login
+      description: Authenticate user and generate JWT tokens
+      tags:
+        - Authentication
+      security: [] # No authentication required for login
+      parameters:
+        - in: body
+          name: loginRequest
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+                format: password
+      responses:
+        '200':
+          description: Successful login
+          schema:
+            type: object
+            properties:
+              token:
+                type: string
+              refreshToken:
+                type: string
+        '401':
+          description: Authentication failed
+
+  # User Routes
+  /user/logout:
+    get:
+      summary: User Logout
+      description: Invalidate current JWT token
+      tags:
+        - User
+      responses:
+        '200':
+          description: Successfully logged out
+        '401':
+          description: Unauthorized
+
+  /user:
+    get:
+      summary: Get All Users
+      description: Retrieve list of all users
+      tags:
+        - User
+      responses:
+        '200':
+          description: Successfully retrieved users
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/User'
+        '401':
+          description: Unauthorized
+
+  /user/{userId}:
+    get:
+      summary: Get User by ID
+      description: Retrieve specific user details
+      tags:
+        - User
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successfully retrieved user
+          schema:
+            $ref: '#/definitions/User'
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+    put:
+      summary: Update User
+      description: Update user information
+      tags:
+        - User
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          type: string
+        - in: body
+          name: userUpdate
+          required: true
+          schema:
+            $ref: '#/definitions/UserUpdate'
+      responses:
+        '200':
+          description: User updated successfully
+        '401':
+          description: Unauthorized
+
+    delete:
+      summary: Delete User
+      description: Remove a user from the system
+      tags:
+        - User
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          type: string
+      responses:
+        '200':
+          description: User deleted successfully
+        '401':
+          description: Unauthorized
+
+  /user/{userId}/password:
+    put:
+      summary: Update User Password
+      description: Change user's password
+      tags:
+        - User
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          type: string
+        - in: body
+          name: passwordUpdate
+          required: true
+          schema:
+            type: object
+            properties:
+              currentPassword:
+                type: string
+              newPassword:
+                type: string
+      responses:
+        '200':
+          description: Password updated successfully
+        '401':
+          description: Unauthorized
+
+  /user/{userId}/role:
+    put:
+      summary: Update User Role
+      description: Change user's role in the system
+      tags:
+        - User
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          type: string
+        - in: body
+          name: roleUpdate
+          required: true
+          schema:
+            type: object
+            properties:
+              role:
+                type: string
+      responses:
+        '200':
+          description: Role updated successfully
+        '401':
+          description: Unauthorized
+
+  # Customer Routes
+  /customer:
+    post:
+      summary: Create Customer
+      description: Create a new customer from a lead
+      tags:
+        - Customer
+      parameters:
+        - in: path
+          name: lid
+          required: true
+          type: string
+      responses:
+        '201':
+          description: Customer created successfully
+        '401':
+          description: Unauthorized
+
+    get:
+      summary: Get All Customers
+      description: Retrieve list of all customers
+      tags:
+        - Customer
+      responses:
+        '200':
+          description: Successfully retrieved customers
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Customer'
+        '401':
+          description: Unauthorized
+
+  /customer/{cid}:
+    get:
+      summary: Get Customer by ID
+      description: Retrieve specific customer details
+      tags:
+        - Customer
+      parameters:
+        - in: path
+          name: cid
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successfully retrieved customer
+          schema:
+            $ref: '#/definitions/Customer'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Customer not found
+
+    put:
+      summary: Update Customer
+      description: Update customer information
+      tags:
+        - Customer
+      parameters:
+        - in: path
+          name: cid
+          required: true
+          type: string
+        - in: body
+          name: customerUpdate
+          required: true
+          schema:
+            $ref: '#/definitions/CustomerUpdate'
+      responses:
+        '200':
+          description: Customer updated successfully
+        '401':
+          description: Unauthorized
+
+    delete:
+      summary: Delete Customer
+      description: Remove a customer from the system
+      tags:
+        - Customer
+      parameters:
+        - in: path
+          name: cid
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Customer deleted successfully
+        '401':
+          description: Unauthorized
+
+  /customer/user:
+    get:
+      summary: Get Customers of Current User
+      description: Retrieve customers associated with the current user
+      tags:
+        - Customer
+      responses:
+        '200':
+          description: Successfully retrieved user's customers
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Customer'
+        '401':
+          description: Unauthorized
+
+  /customer/user/{uid}:
+    get:
+      summary: Get Customers by User ID
+      description: Retrieve customers associated with a specific user
+      tags:
+        - Customer
+      parameters:
+        - in: path
+          name: uid
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successfully retrieved customers
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Customer'
+        '401':
+          description: Unauthorized
+
+  # Lead Routes
+  /leads:
+    post:
+      summary: Create Lead
+      description: Create a new lead
+      tags:
+        - Lead
+      parameters:
+        - in: body
+          name: leadCreate
+          required: true
+          schema:
+            $ref: '#/definitions/LeadCreate'
+      responses:
+        '201':
+          description: Lead created successfully
+        '401':
+          description: Unauthorized
+
+    get:
+      summary: Get All Leads
+      description: Retrieve list of all leads
+      tags:
+        - Lead
+      responses:
+        '200':
+          description: Successfully retrieved leads
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Lead'
+        '401':
+          description: Unauthorized
+
+  /leads/{id}:
+    get:
+      summary: Get Lead by ID
+      description: Retrieve specific lead details
+      tags:
+        - Lead
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successfully retrieved lead
+          schema:
+            $ref: '#/definitions/Lead'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Lead not found
+
+    patch:
+      summary: Update Lead
+      description: Update lead information
+      tags:
+        - Lead
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+        - in: body
+          name: leadUpdate
+          required: true
+          schema:
+            $ref: '#/definitions/LeadUpdate'
+      responses:
+        '200':
+          description: Lead updated successfully
+        '401':
+          description: Unauthorized
+
+    delete:
+      summary: Delete Lead
+      description: Remove a lead from the system
+      tags:
+        - Lead
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Lead deleted successfully
+        '401':
+          description: Unauthorized
+
+  /leads/user:
+    get:
+      summary: Get Leads of Current User
+      description: Retrieve leads associated with the current user
+      tags:
+        - Lead
+      responses:
+        '200':
+          description: Successfully retrieved user's leads
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Lead'
+        '401':
+          description: Unauthorized
+
+  /leads/get_lead_by_name/{name}:
+    get:
+      summary: Get Lead by Name
+      description: Retrieve leads matching the specified name
+      tags:
+        - Lead
+      parameters:
+        - in: path
+          name: name
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successfully retrieved leads
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Lead'
+        '401':
+          description: Unauthorized
+
+  # Interactions Routes
+  /interactions/{lid}:
+    post:
+      summary: Create Interaction with Lead
+      description: Create a new interaction for a specific lead
+      tags:
+        - Interaction
+      parameters:
+        - in: path
+          name: lid
+          required: true
+          type: string
+        - in: body
+          name: interactionCreate
+          required: true
+          schema:
+            $ref: '#/definitions/InteractionCreate'
+      responses:
+        '201':
+          description: Interaction created successfully
+        '401':
+          description: Unauthorized
+
+  /interactions/{iid}:
+    put:
+      summary: Update Interaction Note
+      description: Update the note of a specific interaction
+      tags:
+        - Interaction
+      parameters:
+        - in: path
+          name: iid
+          required: true
+          type: string
+        - in: body
+          name: interactionUpdate
+          required: true
+          schema:
+            $ref: '#/definitions/InteractionUpdate'
+      responses:
+        '200':
+          description: Interaction note updated successfully
+        '401':
+          description: Unauthorized
+
+  /interactions:
+    get:
+      summary: Get Interaction History
+      description: Retrieve interaction history
+      tags:
+        - Interaction
+      responses:
+        '200':
+          description: Successfully retrieved interaction history
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Interaction'
+        '401':
+          description: Unauthorized
+
+# Definitions
+definitions:
+  User:
+    type: object
+    properties:
+      id:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      role:
+        type: string
+
+  UserUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+
+  Customer:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      leadSource:
+        type: string
+
+  CustomerUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+
+  Lead:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      status:
+        type: string
+
+  LeadCreate:
+    type: object
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+
+  LeadUpdate:
+    type: object
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      status:
+        type: string
+
+  Interaction:
+    type: object
+    properties:
+      id:
+        type: string
+      leadId:
+        type: string
+      note:
+        type: string
+      date:
+        type: string
+        format: date-time
+
+  InteractionCreate:
+    type: object
+    properties:
+      note:
+        type: string
+
+  InteractionUpdate:
+    type: object
+    properties:
+      note:
+        type: string
