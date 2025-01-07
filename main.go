@@ -22,6 +22,8 @@ func main() {
 	})
 	routes.AuthRoutes(app)
 	routes.UserRoutes(app)
+	routes.LeadRoutes(app)
+	routes.CustomerRoutes(app)
 	Port := os.Getenv("PORT")
 	if Port == "" {
 		Port = "8080"

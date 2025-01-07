@@ -15,7 +15,7 @@ func LeadRoutes(app *iris.Application) {
 		leadRoutes.Get("/", controllers.GetAllLeads)
 		leadRoutes.Get("/{id}", controllers.GetLeadByID)
 		leadRoutes.Get("/user", controllers.GetAllLeadByUser)
-		leadRoutes.Get("/{name}", controllers.GetLeadByName)
+		leadRoutes.Get("/get_lead_by_name/{name}", controllers.GetLeadByName)
 		leadRoutes.Patch("/{id}", controllers.UpdateLeadInfo)
 		leadRoutes.Delete("/{id}", controllers.DeleteLead)
 	}
