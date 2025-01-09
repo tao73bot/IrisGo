@@ -11,5 +11,6 @@ func AuthRoutes(app *iris.Application) {
 	{
 		auth.Post("/signup", controllers.SignUp)
 		auth.Post("/signin", controllers.Login)
+		auth.Get("/verify/{token:string}", controllers.VerifyEmail)
 	}
 }

@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"log"
 	"myIris/db"
 	"myIris/models"
@@ -26,6 +29,12 @@ func SignUp(ctx iris.Context) {
 			Detail(err.Error()))
 		return
 	}
+	if !utils.IsValidateEmail(body.Email) {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail("Invalid Email"))
+		return
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 	if err != nil {
 		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
@@ -33,10 +42,24 @@ func SignUp(ctx iris.Context) {
 			Detail(err.Error()))
 		return
 	}
+	// generate verification token
+	token := make([]byte, 32)
+	if _, err := rand.Read(token); err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail("Failed to generate verification token"))
+		return
+	}
+	tokenExp := time.Now().Add(20 * time.Minute)
+	verificationToken := hex.EncodeToString(token)
+
 	user := models.User{
-		Name:     body.Name,
-		Email:    body.Email,
-		Password: string(hash),
+		Name:             body.Name,
+		Email:            body.Email,
+		Password:         string(hash),
+		VerifcationToken: verificationToken,
+		TokenExp:         tokenExp,
+		IsVerified:       false,
 	}
 	x := db.DB.Where("email = ?", body.Email).First(&user).RowsAffected
 	if x > 0 {
@@ -45,6 +68,16 @@ func SignUp(ctx iris.Context) {
 			Detail("Email already exists"))
 		return
 	}
+	log.Println(user.Email)
+	// send verification email
+	verificationLink := "http://localhost:" + os.Getenv("PORT") + "/auth/verify/" + verificationToken
+	if err := utils.SendVerificationEmail(user.Email, user.Name, verificationLink); err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail("Failed to send verification email"))
+		return
+	}
+
 	result := db.DB.Create(&user)
 	if result.Error != nil {
 		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
@@ -53,8 +86,41 @@ func SignUp(ctx iris.Context) {
 		return
 	}
 	ctx.JSON(iris.Map{
-		"message": "User created successfully",
+		"message": "User created successfully. Please check your email to verify your account",
 		"user":    user,
+	})
+}
+
+func VerifyEmail(ctx iris.Context) {
+	token := ctx.Params().Get("token")
+	fmt.Println(token)
+	var user models.User
+	result := db.DB.Where("verifcation_token = ?", token).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("Invalid or expired token"))
+		return
+	}
+
+	if time.Now().After(user.TokenExp) {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("Token expired"))
+		return
+	}
+
+	user.IsVerified = true
+	user.VerifcationToken = ""
+	result = db.DB.Save(&user)
+	if result.Error != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(result.Error.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "Email verified successfully",
 	})
 }
 
@@ -214,8 +280,8 @@ func GetAnotherUser(ctx iris.Context) {
 	}
 	ctx.JSON(iris.Map{
 		"message": "User retrieved successfully",
-		"name":   user.Name,
-		"email":    user.Email,
+		"name":    user.Name,
+		"email":   user.Email,
 		"role":    user.Role,
 	})
 }

@@ -109,6 +109,43 @@
           }
         }
       },
+      "/auth/verifyEmail": {
+        "post": {
+          "summary": "Verify Email",
+          "description": "Verify user's email address",
+          "tags": ["Authentication"],
+          "parameters": [
+            {
+              "in": "body",
+              "name": "verifyEmailRequest",
+              "required": true,
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "verificationCode": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Email verified successfully"
+            },
+            "400": {
+              "description": "Invalid verification code"
+            },
+            "404": {
+              "description": "Email not found"
+            }
+          }
+        }
+      },
       "/user/logout": {
         "get": {
           "summary": "User Logout",
