@@ -187,6 +187,113 @@ func Login(ctx iris.Context) {
 	})
 }
 
+func ForgotPassword(ctx iris.Context) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail(err.Error()))
+		return
+	}
+	var user models.User
+	result := db.DB.Where("email = ?", body.Email).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail("User not found"))
+		return
+	}
+	// generate verification token
+	token := make([]byte, 32)
+	if _, err := rand.Read(token); err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail("Failed to generate verification token"))
+		return
+	}
+	tokenExp := time.Now().Add(20 * time.Minute)
+	fmt.Println(token)
+	verificationToken := hex.EncodeToString(token)
+	user.VerifcationToken = verificationToken
+	user.TokenExp = tokenExp
+	fmt.Println(hex.DecodeString(verificationToken))
+	resetLink := "http://localhost:" + os.Getenv("PORT") + "/auth/reset/" + verificationToken
+	if err := utils.SendResetPasswordEmail(user.Email, user.Name, resetLink); err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail("Failed to send reset password email"))
+		return
+	}
+	result = db.DB.Save(&user)
+	if result.Error != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(result.Error.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "Reset password link sent successfully",
+	})
+}
+
+
+func ResetPassword(ctx iris.Context) {
+	token := ctx.Params().Get("token")
+	var user models.User
+	result := db.DB.Where("verifcation_token = ?", token).First(&user)
+	if result.RowsAffected == 0 {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("Invalid or expired token"))
+		return
+	}
+
+	if time.Now().After(user.TokenExp) {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("Token expired"))
+		return
+	}
+
+	var body struct {
+		NewPassword     string `json:"new_password"`
+		ConfirmPassword string `json:"confirm_password"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail(err.Error()))
+		return
+	}
+	if body.NewPassword != body.ConfirmPassword {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Credentials").
+			Detail("Passwords do not match"))
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(err.Error()))
+		return
+	}
+	user.Password = string(hash)
+	user.VerifcationToken = ""
+	result = db.DB.Save(&user)
+	if result.Error != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(result.Error.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "Password reset successfully",
+	})
+}
+
 func Logout(ctx iris.Context) {
 	accessToken := ctx.GetHeader("Authorization")
 	tb, err := utils.NewTokenBlocklist(os.Getenv("REDIS_HOST"))

@@ -69,3 +69,44 @@ func SendVerificationEmail(email, name, verificationLink string) error {
 	}
 	return nil
 }
+
+func SendResetPasswordEmail(email, name, resetLink string) error {
+	SMTPHost := os.Getenv("EmailHost")
+	SMTPPort := 587
+	SMTPUsername := os.Getenv("EmailSender")
+	SMTPPassword := os.Getenv("EmailPassword")
+	m := gomail.NewMessage()
+	m.SetHeader("From", SMTPUsername)
+	m.SetHeader("To", email)
+	m.SetHeader("Subject", "Reset your password")
+
+	emailBody := fmt.Sprintf(`
+		Hello %s,
+
+		You recently requested to reset your password. Please click the link below to reset your password:
+
+		%s
+
+		This link will expire in 2 minutes.
+
+		If you didn't request to reset your password, please ignore this email.
+
+		Best regards,
+		%s Team
+	`, name, resetLink, SMTPUsername)
+
+	m.SetBody("text/html", emailBody)
+
+	d := gomail.NewDialer(
+		SMTPHost,
+		SMTPPort,
+		SMTPUsername,
+		SMTPPassword,
+	)
+	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	if err := d.DialAndSend(m); err != nil {
+		fmt.Println("Error sending email: ", err)
+		return err
+	}
+	return nil
+}
