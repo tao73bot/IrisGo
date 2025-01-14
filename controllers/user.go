@@ -332,6 +332,51 @@ func Logout(ctx iris.Context) {
 	})
 }
 
+func GenerateAccessTokenUsingRefreshToken(ctx iris.Context) {
+	refreshToken := ctx.GetCookie("refresh_token")
+	accessToken:= ctx.GetHeader("Authorization")
+	if refreshToken == "" {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("Refresh token not found"))
+		return
+	}
+	claims, err := utils.ValidateTokenIris(refreshToken)
+	if err != nil {
+		ctx.StopWithProblem(iris.StatusBadRequest, iris.NewProblem().
+			Title("Invalid Request").
+			Detail("Invalid refresh token"))
+		return
+	}
+	tb, err := utils.NewTokenBlocklist(os.Getenv("REDIS_HOST"))
+	if err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(err.Error()))
+		return
+	}
+	err = tb.InvalidateTokenIris(accessToken, 20*time.Minute)
+	if err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(err.Error()))
+		return
+	}
+
+	signer := jwt.NewSigner(jwt.HS256, []byte(os.Getenv("JWT_SECRET")), 20*time.Minute)
+	token, err := utils.GenerateTokenIris(signer, claims.Email, claims.Name, claims.Role, claims.UserID)
+	if err != nil {
+		ctx.StopWithProblem(iris.StatusInternalServerError, iris.NewProblem().
+			Title("Internal Server Error").
+			Detail(err.Error()))
+		return
+	}
+	ctx.JSON(iris.Map{
+		"message": "Access token generated successfully",
+		"token":   token,
+	})
+}
+
 func GetUsers(ctx iris.Context) {
 	if err := utils.CheckUserRoles(ctx, "admin"); err != nil {
 		ctx.StopWithProblem(iris.StatusForbidden, iris.NewProblem().
