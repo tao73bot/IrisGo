@@ -3,18 +3,20 @@ package main
 import (
 	"fmt"
 	"myIris/db"
+	"myIris/elastic"
 	"myIris/routes"
 	"os"
 
-	"github.com/kataras/iris/v12"
 	"github.com/iris-contrib/swagger/v12"
 	"github.com/iris-contrib/swagger/v12/swaggerFiles"
+	"github.com/kataras/iris/v12"
 )
 
 func init() {
 	db.LoadEnv()
 	db.ConnectDB()
 	db.Migrate()
+	elastic.ConnectES()
 }
 
 // @BasePath /api/v1
