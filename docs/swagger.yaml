@@ -1,728 +1,773 @@
-swagger: "2.0"
-info:
-  title: Iris CRM Management API
-  description: Comprehensive API for Authentication, User, Customer, Lead, and Interaction Management
-  version: "1.0.0"
-  contact:
-    name: Iris API Support
-    email: support@irisapi.com
-
-securityDefinitions:
-  BearerAuth:
-    type: apiKey
-    name: Authorization
-    in: header
-    description: JWT Bearer Token for authentication
-
-security:
-  - BearerAuth: []
-
-paths:
-  /auth/signup:
-    post:
-      summary: User Signup
-      description: Register a new user
-      tags:
-        - Authentication
-      security: []
-      parameters:
-        - in: body
-          name: signupRequest
-          required: true
-          schema:
-            type: object
-            properties:
-              email:
-                type: string
-                format: email
-              password:
-                type: string
-                format: password
-              name:
-                type: string
-      responses:
-        201:
-          description: User successfully registered
-        400:
-          description: Invalid signup details
-
-  /auth/signin:
-    post:
-      summary: User Login
-      description: Authenticate user and generate JWT tokens
-      tags:
-        - Authentication
-      security: []
-      parameters:
-        - in: body
-          name: loginRequest
-          required: true
-          schema:
-            type: object
-            properties:
-              email:
-                type: string
-                format: email
-              password:
-                type: string
-                format: password
-      responses:
-        200:
-          description: Successful login
-          schema:
-            type: object
-            properties:
-              token:
-                type: string
-              refreshToken:
-                type: string
-        401:
-          description: Authentication failed
-
-  /auth/verify/{token}:
-    get:
-      summary: Verify Email
-      description: Verify user's email address using a token
-      tags:
-        - Authentication
-      security: []
-      parameters:
-        - in: path
-          name: token
-          required: true
-          type: string
-          description: Email verification token
-      responses:
-        200:
-          description: Email verified successfully
-        400:
-          description: Invalid or expired verification token
-
-  /auth/forgot-password:
-    post:
-      summary: Forgot Password
-      description: Request a password reset link
-      tags:
-        - Authentication
-      security: []
-      parameters:
-        - in: body
-          name: forgotPasswordRequest
-          required: true
-          schema:
-            type: object
-            properties:
-              email:
-                type: string
-                format: email
-      responses:
-        200:
-          description: Password reset link sent successfully
-        404:
-          description: Email not found
-
-  /auth/reset-password/{token}:
-    put:
-      summary: Reset Password
-      description: Reset user password using a reset token
-      tags:
-        - Authentication
-      security: []
-      parameters:
-        - in: path
-          name: token
-          required: true
-          type: string
-          description: Password reset token
-        - in: body
-          name: resetPasswordRequest
-          required: true
-          schema:
-            type: object
-            properties:
-              password:
-                type: string
-                format: password
-      responses:
-        200:
-          description: Password reset successfully
-        400:
-          description: Invalid or expired reset token
-
-  /user/logout:
-    get:
-      summary: User Logout
-      description: Invalidate current JWT token
-      tags:
-        - User
-      responses:
-        200:
-          description: Successfully logged out
-        401:
-          description: Unauthorized
-
-  /user:
-    get:
-      summary: Get All Users
-      description: Retrieve list of all users
-      tags:
-        - User
-      responses:
-        200:
-          description: Successfully retrieved users
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/User'
-        401:
-          description: Unauthorized
-
-  /user/{userId}:
-    get:
-      summary: Get User by ID
-      description: Retrieve specific user details
-      tags:
-        - User
-      parameters:
-        - in: path
-          name: userId
-          required: true
-          type: string
-      responses:
-        200:
-          description: Successfully retrieved user
-          schema:
-            $ref: '#/definitions/User'
-        401:
-          description: Unauthorized
-        404:
-          description: User not found
-
-    put:
-      summary: Update User
-      description: Update user information
-      tags:
-        - User
-      parameters:
-        - in: path
-          name: userId
-          required: true
-          type: string
-        - in: body
-          name: userUpdateRequest
-          required: true
-          schema:
-            $ref: '#/definitions/User'
-      responses:
-        200:
-          description: User updated successfully
-        401:
-          description: Unauthorized
-        404:
-          description: User not found
-
-    delete:
-      summary: Delete User
-      description: Delete a specific user
-      tags:
-        - User
-      parameters:
-        - in: path
-          name: userId
-          required: true
-          type: string
-      responses:
-        200:
-          description: User deleted successfully
-        401:
-          description: Unauthorized
-        404:
-          description: User not found
-
-  /user/{userId}/password:
-    put:
-      summary: Update User Password
-      description: Update user's password
-      tags:
-        - User
-      parameters:
-        - in: path
-          name: userId
-          required: true
-          type: string
-        - in: body
-          name: passwordUpdateRequest
-          required: true
-          schema:
-            type: object
-            properties:
-              oldPassword:
-                type: string
-                format: password
-              newPassword:
-                type: string
-                format: password
-      responses:
-        200:
-          description: Password updated successfully
-        401:
-          description: Unauthorized
-        400:
-          description: Invalid old password
-
-  /user/{userId}/role:
-    put:
-      summary: Update User Role
-      description: Update user's role
-      tags:
-        - User
-      parameters:
-        - in: path
-          name: userId
-          required: true
-          type: string
-        - in: body
-          name: roleUpdateRequest
-          required: true
-          schema:
-            type: object
-            properties:
-              role:
-                type: string
-      responses:
-        200:
-          description: Role updated successfully
-        401:
-          description: Unauthorized
-        403:
-          description: Forbidden
-
-  /customer/{lid}:
-    post:
-      summary: Create Customer from Lead
-      description: Create a new customer from an existing lead
-      tags:
-        - Customer
-      parameters:
-        - in: path
-          name: lid
-          required: true
-          type: string
-          description: Lead ID
-      responses:
-        201:
-          description: Customer created successfully
-        400:
-          description: Invalid lead ID
-        401:
-          description: Unauthorized
-
-  /customer:
-    get:
-      summary: Get All Customers
-      description: Retrieve list of all customers
-      tags:
-        - Customer
-      responses:
-        200:
-          description: Successfully retrieved customers
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Customer'
-        401:
-          description: Unauthorized
-
-  /customer/{cid}:
-    get:
-      summary: Get Customer by ID
-      description: Retrieve specific customer details
-      tags:
-        - Customer
-      parameters:
-        - in: path
-          name: cid
-          required: true
-          type: string
-      responses:
-        200:
-          description: Successfully retrieved customer
-          schema:
-            $ref: '#/definitions/Customer'
-        401:
-          description: Unauthorized
-        404:
-          description: Customer not found
-
-    put:
-      summary: Update Customer
-      description: Update customer information
-      tags:
-        - Customer
-      parameters:
-        - in: path
-          name: cid
-          required: true
-          type: string
-        - in: body
-          name: customerUpdateRequest
-          required: true
-          schema:
-            $ref: '#/definitions/Customer'
-      responses:
-        200:
-          description: Customer updated successfully
-        401:
-          description: Unauthorized
-        404:
-          description: Customer not found
-
-    delete:
-      summary: Delete Customer
-      description: Delete a specific customer
-      tags:
-        - Customer
-      parameters:
-        - in: path
-          name: cid
-          required: true
-          type: string
-      responses:
-        200:
-          description: Customer deleted successfully
-        401:
-          description: Unauthorized
-        404:
-          description: Customer not found
-
-  /customer/user:
-    get:
-      summary: Get Customers of Current User
-      description: Retrieve customers associated with the current user
-      tags:
-        - Customer
-      responses:
-        200:
-          description: Successfully retrieved user's customers
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Customer'
-        401:
-          description: Unauthorized
-
-  /customer/user/{uid}:
-    get:
-      summary: Get Customers by User ID
-      description: Retrieve customers associated with a specific user
-      tags:
-        - Customer
-      parameters:
-        - in: path
-          name: uid
-          required: true
-          type: string
-      responses:
-        200:
-          description: Successfully retrieved user's customers
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Customer'
-        401:
-          description: Unauthorized
-        404:
-          description: User not found
-
-  /leads:
-    post:
-      summary: Create Lead
-      description: Create a new lead
-      tags:
-        - Lead
-      parameters:
-        - in: body
-          name: leadCreateRequest
-          required: true
-          schema:
-            $ref: '#/definitions/Lead'
-      responses:
-        201:
-          description: Lead created successfully
-        400:
-          description: Invalid lead details
-        401:
-          description: Unauthorized
-
-    get:
-      summary: Get All Leads
-      description: Retrieve list of all leads
-      tags:
-        - Lead
-      responses:
-        200:
-          description: Successfully retrieved leads
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Lead'
-        401:
-          description: Unauthorized
-
-  /leads/{id}:
-    get:
-      summary: Get Lead by ID
-      description: Retrieve specific lead details
-      tags:
-        - Lead
-      parameters:
-        - in: path
-          name: id
-          required: true
-          type: string
-      responses:
-        200:
-          description: Successfully retrieved lead
-          schema:
-            $ref: '#/definitions/Lead'
-        401:
-          description: Unauthorized
-        404:
-          description: Lead not found
-
-    patch:
-      summary: Update Lead
-      description: Update lead information
-      tags:
-        - Lead
-      parameters:
-        - in: path
-          name: id
-          required: true
-          type: string
-        - in: body
-          name: leadUpdateRequest
-          required: true
-          schema:
-            $ref: '#/definitions/Lead'
-      responses:
-        200:
-          description: Lead updated successfully
-        401:
-          description: Unauthorized
-        404:
-          description: Lead not found
-
-    delete:
-      summary: Delete Lead
-      description: Delete a specific lead
-      tags:
-        - Lead
-      parameters:
-        - in: path
-          name: id
-          required: true
-          type: string
-      responses:
-        200:
-          description: Lead deleted successfully
-        401:
-          description: Unauthorized
-        404:
-          description: Lead not found
-
-  /leads/user:
-    get:
-      summary: Get Leads of Current User
-      description: Retrieve leads associated with the current user
-      tags:
-        - Lead
-      responses:
-        200:
-          description: Successfully retrieved user's leads
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Lead'
-        401:
-          description: Unauthorized
-
-  /leads/get_lead_by_name/{name}:
-    get:
-      summary: Get Lead by Name
-      description: Retrieve lead details by name
-      tags:
-        - Lead
-      parameters:
-        - in: path
-          name: name
-          required: true
-          type: string
-      responses:
-        200:
-          description: Successfully retrieved lead
-          schema:
-            $ref: '#/definitions/Lead'
-        401:
-          description: Unauthorized
-        404:
-          description: Lead not found
-
-  /interactions/{lid}:
-    post:
-      summary: Create Interaction with Lead
-      description: Create a new interaction for a specific lead
-      tags:
-        - Interaction
-      parameters:
-        - in: path
-          name: lid
-          required: true
-          type: string
-          description: Lead ID
-        - in: body
-          name: interactionCreateRequest
-          required: true
-          schema:
-            $ref: '#/definitions/Interaction'
-      responses:
-        201:
-          description: Interaction created successfully
-        400:
-          description: Invalid interaction details
-        401:
-          description: Unauthorized
-
-  /interactions/{iid}:
-    put:
-      summary: Update Interaction Note
-      description: Update the note of a specific interaction
-      tags:
-        - Interaction
-      parameters:
-        - in: path
-          name: iid
-          required: true
-          type: string
-          description: Interaction ID
-        - in: body
-          name: interactionUpdateRequest
-          required: true
-          schema:
-            type: object
-            properties:
-              note:
-                type: string
-      responses:
-        200:
-          description: Interaction note updated successfully
-        401:
-          description: Unauthorized
-        404:
-          description: Interaction not found
-
-  /interactions:
-    get:
-      summary: Get Interaction History
-      description: Retrieve interaction history
-      tags:
-        - Interaction
-      responses:
-        200:
-          description: Successfully retrieved interaction history
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Interaction'
-        401:
-          description: Unauthorized
-
-definitions:
-  User:
-    type: object
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-      email:
-        type: string
-        format: email
-      role:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-
-  Customer:
-    type: object
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-      email:
-        type: string
-        format: email
-      phone:
-        type: string
-      address:
-        type: string
-      leadSource:
-        type: string
-      userId:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-
-  Lead:
-    type: object
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-      email:
-        type: string
-        format: email
-      phone:
-        type: string
-      status:
-        type: string
-      source:
-        type: string
-      userId:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
-
-  Interaction:
-    type: object
-    properties:
-      id:
-        type: string
-      leadId:
-        type: string
-      note:
-        type: string
-      type:
-        type: string
-      userId:
-        type: string
-      createdAt:
-        type: string
-        format: date-time
-      updatedAt:
-        type: string
-        format: date-time
+{
+  "swagger": "2.0",
+  "info": {
+      "title": "Iris CRM Management API",
+      "description": "Comprehensive API for Authentication, User, Customer, Lead, and Interaction Management",
+      "version": "1.0.0",
+      "contact": {
+          "name": "Iris API Support",
+          "email": "support@irisapi.com"
+      }
+  },
+  "securityDefinitions": {
+      "BearerAuth": {
+          "type": "apiKey",
+          "name": "Authorization",
+          "in": "header",
+          "description": "JWT Bearer Token for authentication"
+      }
+  },
+  "security": [
+      {
+          "BearerAuth": []
+      }
+  ],
+  "paths": {
+      "/auth/signup": {
+          "post": {
+              "summary": "User Signup",
+              "description": "Register a new user",
+              "tags": ["Authentication"],
+              "security": [],
+              "parameters": [
+                  {
+                      "in": "body",
+                      "name": "signupRequest",
+                      "required": true,
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "email": {"type": "string", "format": "email"},
+                              "password": {"type": "string", "format": "password"},
+                              "name": {"type": "string"}
+                          }
+                      }
+                  }
+              ],
+              "responses": {
+                  "201": {"description": "User successfully registered"},
+                  "400": {"description": "Invalid signup details"}
+              }
+          }
+      },
+      "/auth/signin": {
+          "post": {
+              "summary": "User Login",
+              "description": "Authenticate user and generate JWT tokens",
+              "tags": ["Authentication"],
+              "security": [],
+              "parameters": [
+                  {
+                      "in": "body",
+                      "name": "loginRequest",
+                      "required": true,
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "email": {"type": "string", "format": "email"},
+                              "password": {"type": "string", "format": "password"}
+                          }
+                      }
+                  }
+              ],
+              "responses": {
+                  "200": {
+                      "description": "Successful login",
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "token": {"type": "string"},
+                              "refreshToken": {"type": "string"}
+                          }
+                      }
+                  },
+                  "401": {"description": "Authentication failed"}
+              }
+          }
+      },
+      "/auth/verify/{token}": {
+          "get": {
+              "summary": "Verify Email",
+              "description": "Verify user's email address using a token",
+              "tags": ["Authentication"],
+              "security": [],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "token",
+                      "required": true,
+                      "type": "string",
+                      "description": "Email verification token"
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Email verified successfully"},
+                  "400": {"description": "Invalid or expired verification token"}
+              }
+          }
+      },
+      "/auth/forgot-password": {
+          "post": {
+              "summary": "Forgot Password",
+              "description": "Request a password reset link",
+              "tags": ["Authentication"],
+              "security": [],
+              "parameters": [
+                  {
+                      "in": "body",
+                      "name": "forgotPasswordRequest",
+                      "required": true,
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "email": {"type": "string", "format": "email"}
+                          }
+                      }
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Password reset link sent successfully"},
+                  "404": {"description": "Email not found"}
+              }
+          }
+      },
+      "/auth/reset-password/{token}": {
+          "put": {
+              "summary": "Reset Password",
+              "description": "Reset user password using a reset token",
+              "tags": ["Authentication"],
+              "security": [],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "token",
+                      "required": true,
+                      "type": "string",
+                      "description": "Password reset token"
+                  },
+                  {
+                      "in": "body",
+                      "name": "resetPasswordRequest",
+                      "required": true,
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "password": {"type": "string", "format": "password"}
+                          }
+                      }
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Password reset successfully"},
+                  "400": {"description": "Invalid or expired reset token"}
+              }
+          }
+      },
+      "/user/logout": {
+          "get": {
+              "summary": "User Logout",
+              "description": "Invalidate current JWT token",
+              "tags": ["User"],
+              "responses": {
+                  "200": {"description": "Successfully logged out"},
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/user": {
+          "get": {
+              "summary": "Get All Users",
+              "description": "Retrieve list of all users",
+              "tags": ["User"],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved users",
+                      "schema": {
+                          "type": "array",
+                          "items": {"$ref": "#/definitions/User"}
+                      }
+                  },
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/user/{userId}": {
+          "get": {
+              "summary": "Get User by ID",
+              "description": "Retrieve specific user details",
+              "tags": ["User"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "userId",
+                      "required": true,
+                      "type": "string"
+                  }
+              ],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved user",
+                      "schema": {"$ref": "#/definitions/User"}
+                  },
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "User not found"}
+              }
+          },
+          "put": {
+              "summary": "Update User",
+              "description": "Update user information",
+              "tags": ["User"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "userId",
+                      "required": true,
+                      "type": "string"
+                  },
+                  {
+                      "in": "body",
+                      "name": "userUpdateRequest",
+                      "required": true,
+                      "schema": {"$ref": "#/definitions/User"}
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "User updated successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "User not found"}
+              }
+          },
+          "delete": {
+              "summary": "Delete User",
+              "description": "Delete a specific user",
+              "tags": ["User"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "userId",
+                      "required": true,
+                      "type": "string"
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "User deleted successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "User not found"}
+              }
+          }
+      },
+      "/user/{userId}/password": {
+          "put": {
+              "summary": "Update User Password",
+              "description": "Update user's password",
+              "tags": ["User"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "userId",
+                      "required": true,
+                      "type": "string"
+                  },
+                  {
+                      "in": "body",
+                      "name": "passwordUpdateRequest",
+                      "required": true,
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "oldPassword": {"type": "string", "format": "password"},
+                              "newPassword": {"type": "string", "format": "password"}
+                          }
+                      }
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Password updated successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "400": {"description": "Invalid old password"}
+              }
+          }
+      },
+      "/user/{userId}/role": {
+          "put": {
+              "summary": "Update User Role",
+              "description": "Update user's role",
+              "tags": ["User"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "userId",
+                      "required": true,
+                      "type": "string"
+                  },
+                  {
+                      "in": "body",
+                      "name": "roleUpdateRequest",
+                      "required": true,
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "role": {"type": "string"}
+                          }
+                      }
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Role updated successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "403": {"description": "Forbidden"}
+              }
+          }
+      },
+      "/user/get_access_token": {
+          "get": {
+              "summary": "Get Access Token",
+              "description": "Obtain a new access token using refresh token",
+              "tags": ["Authentication"],
+              "security": [],
+              "parameters": [
+                  {
+                      "in": "body",
+                      "name": "refreshTokenRequest",
+                      "required": true,
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "refresh_token": {"type": "string", "description": "Refresh token to obtain new access token"}
+                          }
+                      }
+                  }
+              ],
+              "responses": {
+                  "200": {
+                      "description": "Successfully obtained new access token",
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "access_token": {"type": "string"},
+                              "expires_in": {"type": "integer"}
+                          }
+                      }
+                  },
+                  "400": {"description": "Invalid or expired refresh token"},
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/customer/{lid}": {
+          "post": {
+              "summary": "Create Customer from Lead",
+              "description": "Create a new customer from an existing lead",
+              "tags": ["Customer"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "lid",
+                      "required": true,
+                      "type": "string",
+                      "description": "Lead ID"
+                  }
+              ],
+              "responses": {
+                  "201": {"description": "Customer created successfully"},
+                  "400": {"description": "Invalid lead ID"},
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/customer": {
+          "get": {
+              "summary": "Get All Customers",
+              "description": "Retrieve list of all customers",
+              "tags": ["Customer"],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved customers",
+                      "schema": {
+                          "type": "array",
+                          "items": {"$ref": "#/definitions/Customer"}
+                      }
+                  },
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/customer/{cid}": {
+          "get": {
+              "summary": "Get Customer by ID",
+              "description": "Retrieve specific customer details",
+              "tags": ["Customer"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "cid",
+                      "required": true,
+                      "type": "string"
+                  }
+              ],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved customer",
+                      "schema": {"$ref": "#/definitions/Customer"}
+                  },
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "Customer not found"}
+              }
+          },
+          "put": {
+              "summary": "Update Customer",
+              "description": "Update customer information",
+              "tags": ["Customer"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "cid",
+                      "required": true,
+                      "type": "string"
+                  },
+                  {
+                      "in": "body",
+                      "name": "customerUpdateRequest",
+                      "required": true,
+                      "schema": {"$ref": "#/definitions/Customer"}
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Customer updated successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "Customer not found"}
+              }
+          },
+          "delete": {
+              "summary": "Delete Customer",
+              "description": "Delete a specific customer",
+              "tags": ["Customer"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "cid",
+                      "required": true,
+                      "type": "string"
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Customer deleted successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "Customer not found"}
+              }
+          }
+      },
+      "/customer/user": {
+          "get": {
+              "summary": "Get Customers of Current User",
+              "description": "Retrieve customers associated with the current user",
+              "tags": ["Customer"],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved user's customers",
+                      "schema": {
+                          "type": "array",
+                          "items": {"$ref": "#/definitions/Customer"}
+                      }
+                  },
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/customer/user/{uid}": {
+          "get": {
+              "summary": "Get Customers by User ID",
+              "description": "Retrieve customers associated with a specific user",
+              "tags": ["Customer"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "uid",
+                      "required": true,
+                      "type": "string"
+                  }
+              ],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved user's customers",
+                      "schema": {
+                          "type": "array",
+                          "items": {"$ref": "#/definitions/Customer"}
+                      }
+                  },
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "User not found"}
+              }
+          }
+      },
+      "/leads": {
+          "post": {
+              "summary": "Create Lead",
+              "description": "Create a new lead",
+              "tags": ["Lead"],
+              "parameters": [
+                  {
+                      "in": "body",
+                      "name": "leadCreateRequest",
+                      "required": true,
+                      "schema": {"$ref": "#/definitions/Lead"}
+                  }
+              ],
+              "responses": {
+                  "201": {"description": "Lead created successfully"},
+                  "400": {"description": "Invalid lead details"},
+                  "401": {"description": "Unauthorized"}
+              }
+          },
+          "get": {
+              "summary": "Get All Leads",
+              "description": "Retrieve list of all leads",
+              "tags": ["Lead"],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved leads",
+                      "schema": {
+                          "type": "array",
+                          "items": {"$ref": "#/definitions/Lead"}
+                      }
+                  },
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/leads/{id}": {
+          "get": {
+              "summary": "Get Lead by ID",
+              "description": "Retrieve specific lead details",
+              "tags": ["Lead"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "id",
+                      "required": true,
+                      "type": "string"
+                  }
+              ],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved lead",
+                      "schema": {"$ref": "#/definitions/Lead"}
+                  },
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "Lead not found"}
+              }
+          },
+          "patch": {
+              "summary": "Update Lead",
+              "description": "Update lead information",
+              "tags": ["Lead"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "id",
+                      "required": true,
+                      "type": "string"
+                  },
+                  {
+                      "in": "body",
+                      "name": "leadUpdateRequest",
+                      "required": true,
+                      "schema": {"$ref": "#/definitions/Lead"}
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Lead updated successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "Lead not found"}
+              }
+          },
+          "delete": {
+              "summary": "Delete Lead",
+              "description": "Delete a specific lead",
+              "tags": ["Lead"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "id",
+                      "required": true,
+                      "type": "string"
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Lead deleted successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "Lead not found"}
+              }
+          }
+      },
+      "/leads/user": {
+          "get": {
+              "summary": "Get Leads of Current User",
+              "description": "Retrieve leads associated with the current user",
+              "tags": ["Lead"],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved user's leads",
+                      "schema": {
+                          "type": "array",
+                          "items": {"$ref": "#/definitions/Lead"}
+                      }
+                  },
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/leads/get_lead_by_name/{name}": {
+          "get": {
+              "summary": "Get Lead by Name",
+              "description": "Retrieve lead details by name",
+              "tags": ["Lead"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "name",
+                      "required": true,
+                      "type": "string"
+                  }
+              ],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved lead",
+                      "schema": {"$ref": "#/definitions/Lead"}
+                  },
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "Lead not found"}
+              }
+          }
+      },
+      "/interactions/{lid}": {
+          "post": {
+              "summary": "Create Interaction with Lead",
+              "description": "Create a new interaction for a specific lead",
+              "tags": ["Interaction"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "lid",
+                      "required": true,
+                      "type": "string",
+                      "description": "Lead ID"
+                  },
+                  {
+                      "in": "body",
+                      "name": "interactionCreateRequest",
+                      "required": true,
+                      "schema": {"$ref": "#/definitions/Interaction"}
+                  }
+              ],
+              "responses": {
+                  "201": {"description": "Interaction created successfully"},
+                  "400": {"description": "Invalid interaction details"},
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      },
+      "/interactions/{iid}": {
+          "put": {
+              "summary": "Update Interaction Note",
+              "description": "Update the note of a specific interaction",
+              "tags": ["Interaction"],
+              "parameters": [
+                  {
+                      "in": "path",
+                      "name": "iid",
+                      "required": true,
+                      "type": "string",
+                      "description": "Interaction ID"
+                  },
+                  {
+                      "in": "body",
+                      "name": "interactionUpdateRequest",
+                      "required": true,
+                      "schema": {
+                          "type": "object",
+                          "properties": {
+                              "note": {"type": "string"}
+                          }
+                      }
+                  }
+              ],
+              "responses": {
+                  "200": {"description": "Interaction note updated successfully"},
+                  "401": {"description": "Unauthorized"},
+                  "404": {"description": "Interaction not found"}
+              }
+          }
+      },
+      "/interactions": {
+          "get": {
+              "summary": "Get Interaction History",
+              "description": "Retrieve interaction history",
+              "tags": ["Interaction"],
+              "responses": {
+                  "200": {
+                      "description": "Successfully retrieved interaction history",
+                      "schema": {
+                          "type": "array",
+                          "items": {"$ref": "#/definitions/Interaction"}
+                      }
+                  },
+                  "401": {"description": "Unauthorized"}
+              }
+          }
+      }
+  },
+  "definitions": {
+      "User": {
+          "type": "object",
+          "properties": {
+              "id": {"type": "string"},
+              "name": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "role": {"type": "string"},
+              "createdAt": {"type": "string", "format": "date-time"},
+              "updatedAt": {"type": "string", "format": "date-time"}
+          }
+      },
+      "Customer": {
+          "type": "object",
+          "properties": {
+              "id": {"type": "string"},
+              "name": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "phone": {"type": "string"},
+              "address": {"type": "string"},
+              "leadSource": {"type": "string"},
+              "userId": {"type": "string"},
+              "createdAt": {"type": "string", "format": "date-time"},
+              "updatedAt": {"type": "string", "format": "date-time"}
+          }
+      },
+      "Lead": {
+          "type": "object",
+          "properties": {
+              "id": {"type": "string"},
+              "name": {"type": "string"},
+              "email": {"type": "string", "format": "email"},
+              "phone": {"type": "string"},
+              "status": {"type": "string"},
+              "source": {"type": "string"},
+              "userId": {"type": "string"},
+              "createdAt": {"type": "string", "format": "date-time"},
+              "updatedAt": {"type": "string", "format": "date-time"}
+          }
+      },
+      "Interaction": {
+          "type": "object",
+          "properties": {
+              "id": {"type": "string"},
+              "leadId": {"type": "string"},
+              "note": {"type": "string"},
+              "type": {"type": "string"},
+              "userId": {"type": "string"},
+              "createdAt": {"type": "string", "format": "date-time"},
+              "updatedAt": {"type": "string", "format": "date-time"}
+          }
+      }
+  }
+}
